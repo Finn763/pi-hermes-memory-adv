@@ -1,9 +1,5 @@
 <div align="center">
 
-<p align="center">
-  <img src="docs/images/pi_memory.png" width="480" alt="Pi Hermes Memory">
-</p>
-
 # Pi Hermes Memory (adv)
 
 *会话一结束，你的 Pi Agent 就把一切都忘了。这个扩展负责治好它。*

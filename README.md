@@ -1,9 +1,5 @@
 <div align="center">
 
-<p align="center">
-  <img src="docs/images/pi_memory.png" width="480" alt="Pi Hermes Memory">
-</p>
-
 # Pi Hermes Memory (adv)
 
 *Your Pi agent forgets everything when the session ends. This fixes that.*
