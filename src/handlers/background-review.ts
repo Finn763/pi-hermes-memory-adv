@@ -41,6 +41,7 @@ import {
 } from "./review-memory-ops.js";
 
 import { resolveProjectName, resolveProjectStore, type ProjectNameRef, type ProjectStoreRef } from "../project-context.js";
+import { SKILL_MANAGE_TOOL_NAME } from "../tools/skill-tool.js";
 export interface BackgroundReviewOptions {
   ensureMemoryReady?: EnsureMemoryReady;
   dbManager?: DatabaseManager | null;
@@ -371,10 +372,12 @@ export function setupBackgroundReview(
   const skillStore = options.skillStore;
   const shutdownGraceMs = options.deps?.shutdownGraceMs ?? SESSION_REVIEW_SHUTDOWN_GRACE_MS;
 
-  let turnsSinceReview = 0;
-  let toolCallsSinceReview = 0;
-  let toolCallsSinceSkill = 0;
-  let userTurnCount = 0;
+let turnsSinceReview = 0;
+let toolCallsSinceReview = 0;
+let toolCallsSinceSkill = 0;
+let userTurnCount = 0;
+/** Memory-write tools: using one restarts the memory nudge clocks (Hermes parity). */
+const MEMORY_WRITE_TOOL_NAMES = new Set(["memory_add", "memory_replace", "memory_remove"]);
   let activeReview: Promise<void> | undefined;
   const sessionAbort = new AbortController();
   let shutdownPromise: Promise<void> | undefined;
@@ -596,8 +599,23 @@ export function setupBackgroundReview(
         if (Array.isArray(content)) {
           for (const block of content) {
             if (block && typeof block === "object" && block.type === "toolCall") {
-              toolCallsSinceReview++;
-              toolCallsSinceSkill++;
+              const toolName = typeof block.name === "string" ? block.name : "";
+              if (toolName === SKILL_MANAGE_TOOL_NAME) {
+                // Hermes parity (tool_executor.py:705-706): when the main agent
+                // writes a skill itself, the skill clock restarts and the write
+                // does not count as progress toward the next review.
+                toolCallsSinceSkill = 0;
+              } else {
+                toolCallsSinceSkill++;
+                if (MEMORY_WRITE_TOOL_NAMES.has(toolName)) {
+                  // Hermes parity (tool_executor.py:703-704): a memory write by the
+                  // main agent restarts the memory clocks for the same reason.
+                  turnsSinceReview = 0;
+                  toolCallsSinceReview = 0;
+                } else {
+                  toolCallsSinceReview++;
+                }
+              }
             }
           }
         }

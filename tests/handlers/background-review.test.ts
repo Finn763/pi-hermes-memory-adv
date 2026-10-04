@@ -563,12 +563,12 @@ describe("setupBackgroundReview", () => {
 
   // ─── Skill clock tests (Hermes skills.creation_nudge_interval parity) ───
 
-  function makeToolCallBranch(numCalls: number, totalMessages = 6) {
+  function makeToolCallBranch(numCalls: number, totalMessages = 6, toolName = "read") {
     const branch = makeBranch(totalMessages);
     const last = branch[branch.length - 1];
     last.message.content = [
       { type: "text", text: "working on it" },
-      ...Array.from({ length: numCalls }, (_, i) => ({ type: "toolCall", id: `tc${i}`, name: "read", arguments: {} })),
+      ...Array.from({ length: numCalls }, (_, i) => ({ type: "toolCall", id: `tc${i}`, name: toolName, arguments: {} })),
     ] as any;
     return branch;
   }
@@ -604,6 +604,50 @@ describe("setupBackgroundReview", () => {
     }
     await settle();
     assert.strictEqual(execCalls.length, 0, "0 disables the skill clock entirely");
+  });
+
+  it("restarts the memory clocks when the main agent saves a memory itself", async () => {
+    const config = { ...defaultConfig, nudgeInterval: 2, nudgeToolCalls: 999, skillNudgeInterval: 0 } as MemoryConfig;
+    const pi = createMockPi();
+    setup(pi, config);
+
+    fireMessageEnd("user");
+    fireMessageEnd("user");
+    fireMessageEnd("user");
+
+    fireTurnEnd(makeToolCallBranch(1, 6, "memory_add"));
+    await settle();
+    assert.strictEqual(execCalls.length, 0, "a memory write turn restarts the turn clock, so it does not count");
+
+    fireTurnEnd(makeBranch(6));
+    await settle();
+    assert.strictEqual(execCalls.length, 0, "one turn after the write is still below nudgeInterval 2");
+
+    fireTurnEnd(makeBranch(6));
+    await reviewSettledSignal.promise;
+    assert.strictEqual(execCalls.length, 1, "the clock restarted at the memory write");
+  });
+
+  it("restarts the skill clock when the main agent writes a skill itself", async () => {
+    const config = { ...defaultConfig, nudgeInterval: 999, nudgeToolCalls: 999, skillNudgeInterval: 2 } as MemoryConfig;
+    const pi = createMockPi();
+    setup(pi, config);
+
+    fireMessageEnd("user");
+    fireMessageEnd("user");
+    fireMessageEnd("user");
+
+    fireTurnEnd(makeToolCallBranch(1, 6, "skill_manage"));
+    await settle();
+    assert.strictEqual(execCalls.length, 0, "the skill_manage turn restarts the skill clock, so it does not count");
+
+    fireTurnEnd(makeToolCallBranch(1));
+    await settle();
+    assert.strictEqual(execCalls.length, 0, "a second tool call is still below skillNudgeInterval 2 after the restart");
+
+    fireTurnEnd(makeToolCallBranch(1));
+    await reviewSettledSignal.promise;
+    assert.strictEqual(execCalls.length, 1, "the skill clock restarted at the skill_manage call");
   });
 
   // ─── Tool-call-aware nudge tests (Epic 4) ───
