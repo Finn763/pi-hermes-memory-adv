@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-3fb950?style=flat-square&labelColor=black)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/Finn763/pi-hermes-memory-adv?style=flat-square&logo=github&labelColor=black)](https://github.com/Finn763/pi-hermes-memory-adv/stargazers)
-[![Tests](https://img.shields.io/badge/tests-732-8957e5?style=flat-square&labelColor=black)]
+[![CI](https://github.com/Finn763/pi-hermes-memory-adv/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Finn763/pi-hermes-memory-adv/actions/workflows/ci.yml)
 
 [English](README.md) | 中文
 
