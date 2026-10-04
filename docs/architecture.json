@@ -1,0 +1,389 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Pi Hermes Memory Architecture",
+    "locale": "en",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/chandra447/pi-hermes-memory",
+      "provider": "github",
+      "revision": "038c43ae721d1533a5c0474751e32664025a4500"
+    },
+    "output": "docs/architecture.html",
+    "views": [
+      {
+        "id": "write-path",
+        "label": "Write path",
+        "focus": [
+          "session",
+          "tools",
+          "scanner",
+          "mdstore",
+          "sqlite"
+        ],
+        "note": "One tool call: scan, persist to Markdown, mirror into SQLite."
+      },
+      {
+        "id": "background-review",
+        "label": "Background review",
+        "focus": [
+          "session",
+          "review",
+          "completion",
+          "mdstore",
+          "proposals"
+        ],
+        "note": "Runs on its own clock; staged ops land as curated memory."
+      },
+      {
+        "id": "overflow",
+        "label": "Overflow control",
+        "focus": [
+          "mdstore",
+          "consolidate",
+          "sqlite"
+        ],
+        "note": "Past the char cap, memory is merged instead of dropped."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "session",
+      "type": "external",
+      "label": "Pi Session",
+      "sublabel": "agent + tool calls",
+      "pos": [
+        26,
+        296
+      ],
+      "size": [
+        150,
+        68
+      ],
+      "sources": [
+        {
+          "path": "src/index.ts",
+          "line": 301,
+          "label": "session_start hook"
+        }
+      ]
+    },
+    {
+      "id": "policy",
+      "type": "backend",
+      "label": "Policy Injection",
+      "sublabel": "policy block at start",
+      "pos": [
+        26,
+        120
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/prompt-context.ts",
+          "line": 42,
+          "label": "policy-only + standing rules"
+        },
+        {
+          "path": "src/constants.ts",
+          "line": 158,
+          "label": "memory-policy prompt"
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "type": "backend",
+      "label": "Memory Tools",
+      "sublabel": "add · search · remove",
+      "pos": [
+        266,
+        300
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/tools/memory-tool.ts",
+          "label": "add / replace / remove"
+        },
+        {
+          "path": "src/tools/memory-search-tool.ts",
+          "label": "memory_search"
+        },
+        {
+          "path": "src/tools/session-search-tool.ts",
+          "label": "session_search"
+        }
+      ]
+    },
+    {
+      "id": "scanner",
+      "type": "security",
+      "label": "Content Scan",
+      "sublabel": "secrets + injection",
+      "pos": [
+        486,
+        300
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/store/content-scanner.ts",
+          "line": 63,
+          "label": "scanContent gate"
+        },
+        {
+          "path": "src/store/memory-store.ts",
+          "line": 251,
+          "label": "runs on every write"
+        }
+      ]
+    },
+    {
+      "id": "mdstore",
+      "type": "database",
+      "label": "Markdown Memory",
+      "sublabel": "MEMORY.md · USER.md · projects",
+      "pos": [
+        706,
+        296
+      ],
+      "size": [
+        170,
+        68
+      ],
+      "sources": [
+        {
+          "path": "src/store/memory-store.ts",
+          "label": "source of truth"
+        },
+        {
+          "path": "src/store/standing-instructions.ts",
+          "line": 98,
+          "label": "standing pins"
+        }
+      ]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite FTS5",
+      "sublabel": "memory mirror + session index",
+      "pos": [
+        241,
+        470
+      ],
+      "size": [
+        190,
+        68
+      ],
+      "sources": [
+        {
+          "path": "src/store/db.ts",
+          "label": "schema + FTS tables"
+        },
+        {
+          "path": "src/store/sqlite-memory-store.ts",
+          "label": "search mirror"
+        },
+        {
+          "path": "src/store/session-indexer.ts",
+          "label": "session index"
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "type": "backend",
+      "label": "Background Review",
+      "sublabel": "10 turns or 15 calls",
+      "pos": [
+        706,
+        120
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/handlers/background-review.ts",
+          "label": "nudge gates, single-flight"
+        },
+        {
+          "path": "src/handlers/message-parts.ts",
+          "label": "recent branch window"
+        }
+      ]
+    },
+    {
+      "id": "completion",
+      "type": "cloud",
+      "label": "Side-channel Completion",
+      "sublabel": "compact prompt, staged ops",
+      "pos": [
+        1006,
+        120
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/handlers/review-memory-ops.ts",
+          "label": "apply staged memory ops"
+        },
+        {
+          "path": "src/handlers/pi-child-process.ts",
+          "label": "pi -p fallback"
+        }
+      ]
+    },
+    {
+      "id": "consolidate",
+      "type": "backend",
+      "label": "Auto-Consolidation",
+      "sublabel": "merge + prune past cap",
+      "pos": [
+        706,
+        470
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/handlers/auto-consolidate.ts",
+          "label": "merge + prune"
+        }
+      ]
+    },
+    {
+      "id": "proposals",
+      "type": "backend",
+      "label": "Skill Proposals",
+      "sublabel": "staged for approval",
+      "pos": [
+        926,
+        300
+      ],
+      "size": [
+        170,
+        60
+      ],
+      "sources": [
+        {
+          "path": "src/store/skill-proposal-store.ts",
+          "label": "staged proposals"
+        },
+        {
+          "path": "src/handlers/skills-command.ts",
+          "label": "approve / reject"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "session",
+      "to": "tools",
+      "label": "tool call"
+    },
+    {
+      "from": "tools",
+      "to": "scanner",
+      "label": "write op"
+    },
+    {
+      "from": "scanner",
+      "to": "mdstore",
+      "label": "if clean"
+    },
+    {
+      "from": "mdstore",
+      "to": "consolidate",
+      "label": "at cap"
+    },
+    {
+      "from": "policy",
+      "to": "session",
+      "label": "inject"
+    },
+    {
+      "from": "session",
+      "to": "review",
+      "label": "10 turns · 15 calls"
+    },
+    {
+      "from": "review",
+      "to": "mdstore",
+      "label": "curate"
+    },
+    {
+      "from": "review",
+      "to": "completion",
+      "label": "compact prompt"
+    },
+    {
+      "from": "completion",
+      "to": "review",
+      "label": "staged ops",
+      "variant": "dashed"
+    },
+    {
+      "from": "review",
+      "to": "proposals",
+      "label": "stage"
+    },
+    {
+      "from": "tools",
+      "to": "sqlite",
+      "label": "search"
+    },
+    {
+      "from": "mdstore",
+      "to": "sqlite",
+      "label": "mirror"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Markdown is the source of truth",
+      "items": [
+        "Every memory lives in MEMORY.md, USER.md, projects-memory or failures.md",
+        "SQLite is a rebuildable mirror — restore it with /memory-sync-markdown"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "The review clock",
+      "items": [
+        "10 user turns or 15 tool calls, at least 3 user turns, one review at a time",
+        "Direct side-channel completion first; pi -p subprocess is the fallback"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Nothing saves itself silently",
+      "items": [
+        "Content scan rejects secrets and injection before a store write",
+        "Skill proposals wait for /memory-skill-approve; an empty review stays quiet"
+      ]
+    }
+  ]
+}

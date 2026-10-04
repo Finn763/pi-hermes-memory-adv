@@ -16,6 +16,9 @@ hermes-agent/
 # Pi agent state
 .pi/
 
+# Archify diagram working files + receipts
+.archify/
+
 # IDE
 .idea/
 .vscode/

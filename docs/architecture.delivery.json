@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "35fc8721-e9a3-4418-a294-a248c910feeb",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\code\\pi-hermes-memory-adv\\docs\\architecture.json",
+  "output": "D:\\code\\pi-hermes-memory-adv\\docs\\architecture.html",
+  "specification": {
+    "sha256": "51f2b1a4f0a8f96b94cdc1a548aa27540ccc8733358edb02c5222db877c4740f",
+    "bytes": 8205
+  },
+  "artifact": {
+    "sha256": "762c98385b8afaf5ef244a3501e7a8c951ba9db64bd4a8820dc0a349cfa59333",
+    "bytes": 771020
+  }
+}

@@ -59,7 +59,12 @@ Four failure modes every long-running agent owner has met:
 
 ## How it runs
 
-![Session lifecycle](docs/images/session-lifecycle.svg)
+![Pi Hermes Memory architecture](docs/architecture.svg)
+
+Every path has the same shape: scan, then Markdown, then the mirror. The review
+clock only wakes when there is something worth keeping.
+
+[▶ Interactive version](https://finn763.github.io/pi-hermes-memory-adv/architecture.html)
 
 1. **Session start** — a small memory policy (pinned instructions + pointers) is
    injected. The stores themselves stay one tool call away.

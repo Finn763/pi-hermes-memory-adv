@@ -52,7 +52,11 @@ pi install git:github.com/Finn763/pi-hermes-memory-adv
 
 ## 工作方式
 
-![Session lifecycle](docs/images/session-lifecycle.svg)
+![Pi Hermes 记忆架构](docs/architecture.zh-CN.svg)
+
+每条路径都是同一个形状：先扫描、再落 Markdown、最后镜像进 SQLite。复盘时钟只在有东西值得留下时才醒来。
+
+[▶ 交互版](https://finn763.github.io/pi-hermes-memory-adv/architecture.zh-CN.html)
 
 1. **会话开始** — 注入一份小记忆策略（固定指令 + 指针），存储本体按需调用。
 2. **工作中** — Agent 用 `memory_add` / `memory_replace` / `memory_remove` 写入；

@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Pi Hermes 记忆架构",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/chandra447/pi-hermes-memory",
+      "provider": "github",
+      "revision": "038c43ae721d1533a5c0474751e32664025a4500"
+    },
+    "output": "docs/architecture.zh-CN.html",
+    "views": [
+      {
+        "id": "write-path",
+        "label": "写入路径",
+        "focus": ["session", "tools", "scanner", "mdstore", "sqlite"],
+        "note": "一次工具调用：先扫描，再落 Markdown，最后镜像进 SQLite。"
+      },
+      {
+        "id": "background-review",
+        "label": "后台复盘",
+        "focus": ["session", "review", "completion", "mdstore", "proposals"],
+        "note": "复盘按自己的节奏跑；暂存的操作最终落成记忆。"
+      },
+      {
+        "id": "overflow",
+        "label": "超限控制",
+        "focus": ["mdstore", "consolidate", "sqlite"],
+        "note": "超出字符上限就合并，而不是丢弃。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "session",
+      "type": "external",
+      "label": "Pi 会话",
+      "sublabel": "agent + 工具调用",
+      "pos": [26, 296],
+      "size": [150, 68],
+      "sources": [
+        { "path": "src/index.ts", "line": 301, "label": "session_start hook" }
+      ]
+    },
+    {
+      "id": "policy",
+      "type": "backend",
+      "label": "策略注入",
+      "sublabel": "会话开始注入策略块",
+      "pos": [26, 120],
+      "size": [150, 64],
+      "sources": [
+        { "path": "src/prompt-context.ts", "line": 42, "label": "policy-only + standing rules" },
+        { "path": "src/constants.ts", "line": 158, "label": "memory-policy prompt" }
+      ]
+    },
+    {
+      "id": "tools",
+      "type": "backend",
+      "label": "记忆工具",
+      "sublabel": "add · search · remove",
+      "pos": [266, 300],
+      "size": [140, 60],
+      "sources": [
+        { "path": "src/tools/memory-tool.ts", "label": "add / replace / remove" },
+        { "path": "src/tools/memory-search-tool.ts", "label": "memory_search" },
+        { "path": "src/tools/session-search-tool.ts", "label": "session_search" }
+      ]
+    },
+    {
+      "id": "scanner",
+      "type": "security",
+      "label": "内容扫描",
+      "sublabel": "密钥 + 注入",
+      "pos": [486, 300],
+      "size": [140, 60],
+      "sources": [
+        { "path": "src/store/content-scanner.ts", "line": 63, "label": "scanContent gate" },
+        { "path": "src/store/memory-store.ts", "line": 251, "label": "runs on every write" }
+      ]
+    },
+    {
+      "id": "mdstore",
+      "type": "database",
+      "label": "Markdown 记忆",
+      "sublabel": "MEMORY.md · USER.md · 项目",
+      "pos": [706, 296],
+      "size": [170, 68],
+      "sources": [
+        { "path": "src/store/memory-store.ts", "label": "source of truth" },
+        { "path": "src/store/standing-instructions.ts", "line": 98, "label": "standing pins" }
+      ]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite FTS5",
+      "sublabel": "记忆镜像 + 会话索引",
+      "pos": [241, 470],
+      "size": [190, 68],
+      "sources": [
+        { "path": "src/store/db.ts", "label": "schema + FTS tables" },
+        { "path": "src/store/sqlite-memory-store.ts", "label": "search mirror" },
+        { "path": "src/store/session-indexer.ts", "label": "session index" }
+      ]
+    },
+    {
+      "id": "review",
+      "type": "backend",
+      "label": "后台复盘",
+      "sublabel": "10 轮或 15 次调用",
+      "pos": [706, 120],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/handlers/background-review.ts", "label": "nudge gates, single-flight" },
+        { "path": "src/handlers/message-parts.ts", "label": "recent branch window" }
+      ]
+    },
+    {
+      "id": "completion",
+      "type": "cloud",
+      "label": "侧通道补全",
+      "sublabel": "紧凑提示 + 暂存操作",
+      "pos": [1006, 120],
+      "size": [190, 64],
+      "sources": [
+        { "path": "src/handlers/review-memory-ops.ts", "label": "apply staged memory ops" },
+        { "path": "src/handlers/pi-child-process.ts", "label": "pi -p fallback" }
+      ]
+    },
+    {
+      "id": "consolidate",
+      "type": "backend",
+      "label": "自动合并",
+      "sublabel": "超限合并 + 清理",
+      "pos": [706, 470],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/handlers/auto-consolidate.ts", "label": "merge + prune" }
+      ]
+    },
+    {
+      "id": "proposals",
+      "type": "backend",
+      "label": "技能提案",
+      "sublabel": "暂存待批准",
+      "pos": [926, 300],
+      "size": [170, 60],
+      "sources": [
+        { "path": "src/store/skill-proposal-store.ts", "label": "staged proposals" },
+        { "path": "src/handlers/skills-command.ts", "label": "approve / reject" }
+      ]
+    }
+  ],
+  "connections": [
+    { "from": "session", "to": "tools", "label": "工具调用" },
+    { "from": "tools", "to": "scanner", "label": "写入操作" },
+    { "from": "scanner", "to": "mdstore", "label": "扫描通过" },
+    { "from": "mdstore", "to": "consolidate", "label": "到达上限" },
+    { "from": "policy", "to": "session", "label": "注入" },
+    { "from": "session", "to": "review", "label": "10 轮 · 15 次调用" },
+    { "from": "review", "to": "mdstore", "label": "整理" },
+    { "from": "review", "to": "completion", "label": "紧凑提示" },
+    { "from": "completion", "to": "review", "label": "暂存操作", "variant": "dashed" },
+    { "from": "review", "to": "proposals", "label": "暂存" },
+    { "from": "tools", "to": "sqlite", "label": "检索" },
+    { "from": "mdstore", "to": "sqlite", "label": "镜像" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Markdown 才是唯一事实来源",
+      "items": [
+        "所有记忆都落在 MEMORY.md、USER.md、projects-memory 或 failures.md",
+        "SQLite 只是可重建的镜像 —— 用 /memory-sync-markdown 恢复"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "复盘时钟",
+      "items": [
+        "10 个用户轮次或 15 次工具调用，至少 3 句用户消息，同时只跑一个复盘",
+        "优先走侧通道补全，pi -p 子进程只是兜底"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "没有静默保存",
+      "items": [
+        "每次落库前先扫描密钥与注入内容",
+        "技能提案等 /memory-skill-approve；空复盘保持安静"
+      ]
+    }
+  ]
+}
