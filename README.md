@@ -23,8 +23,8 @@ token-aware policy instead of a dump.
 
 This is the **adv** fork of [chandra447/pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory)
 (MIT), itself a port of the Hermes agent's memory design. On top of the upstream
-engine it adds **staged background skill proposals** and **Hermes-aligned review
-notifications**.
+engine it adds **self-evolving skills** (Hermes parity: written straight through
+with a `💾 Skill …` notice) and **Hermes-aligned review notifications**.
 
 ```bash
 pi install git:github.com/Finn763/pi-hermes-memory-adv
@@ -70,19 +70,21 @@ clock only wakes when there is something worth keeping.
    injected. The stores themselves stay one tool call away.
 2. **While you work** — the agent writes with `memory_add` / `memory_replace` /
    `memory_remove`; corrections are detected and saved on the spot.
-3. **Every 10 turns** (or 15 tool calls, once you have sent 3 messages) — a
-   background review reads recent messages through a side-channel completion and
-   saves what matters: `💾 Memory updated`.
-4. **Skills** — procedures are captured with `skill_manage`; new proposals from a
-   review are **staged for approval** (`/memory-skills pending`) instead of being
-   written silently.
+3. **Every 10 turns** (or 15 tool calls — or 10 tool calls since the last skill
+   write — once you have sent 3 messages) — a background review reads recent
+   messages through a side-channel completion and saves what matters:
+   `💾 Memory updated`.
+4. **Skills** — the same review can create or patch class-level skills straight
+   into the global skill library and reports each one: `💾 Skill '<name>' created`.
+   `skillReviewMode: "stage"` parks them for `/memory-skills pending` instead.
 5. **When a store fills up** — auto-consolidation merges entries under a model pass
    instead of erroring. Nothing is dropped on the floor.
 6. **Anytime** — `session_search` queries every past conversation via SQLite FTS5.
 
 > The cadence follows the original Hermes design: `nudge_interval = 10` user turns,
-> a hard gate of 3 user turns, one review in flight at a time. Silence means there
-> was nothing worth keeping — not that the loop is broken.
+> `skills.creation_nudge_interval = 10` tool calls for the skill clock, a hard gate
+> of 3 user turns, one review in flight at a time. Silence means there was nothing
+> worth keeping — not that the loop is broken.
 
 ---
 
@@ -92,9 +94,9 @@ clock only wakes when there is something worth keeping.
 |---|---|
 | Stores | `MEMORY.md` (facts, env, quirks) · `USER.md` (who you are) · project memory (per-repo conventions) · `failures.md` (what did not work, and why) |
 | Injection | Policy-only by default — searchable, not dumped. Full context injection is opt-in |
-| Review cadence | Every 10 turns / 15 tool calls, hard gate ≥3 user turns, never two reviews at once |
+| Review cadence | Every 10 turns / 15 tool calls, a separate 10-tool-call skill clock, hard gate ≥3 user turns, never two reviews at once |
 | Notifications | `off` / `on` / `verbose`, default `on` — same semantics as Hermes `display.memory_notifications` |
-| Skills | Pi-native `SKILL.md`, written by the agent, staged for your approval by default |
+| Skills | Pi-native `SKILL.md`, written by the agent, auto-applied by default and announced with `💾 Skill …`; `stage` keeps proposals for approval |
 | Secrets | Every write is scanned; API keys, tokens and SSH keys are blocked from persistence |
 | Caps | 5,000 chars per store by default; auto-consolidation when full |
 
@@ -164,7 +166,7 @@ is read when the extension starts — edit it, then restart Pi or `/reload`.
 │   ├── failures.md                 # what did not work, and why
 │   ├── sessions.db                 # SQLite: memory mirror + full-text session search
 │   ├── skills/                     # self-managed skills (SKILL.md)
-│   └── pending/                    # staged skill proposals awaiting approval
+│   └── pending/                    # staged skill proposals (`stage` mode)
 └── projects-memory/<project>/      # per-project memory + skills
 ```
 
@@ -177,10 +179,11 @@ is read when the extension starts — edit it, then restart Pi or `/reload`.
 | `lazyInitialization` | `false` | `true` + `policy-only` = initialize on first use |
 | `nudgeInterval` | `10` | user turns between background reviews |
 | `nudgeToolCalls` | `15` | …or this many tool calls |
+| `skillNudgeInterval` | `10` | tool calls since the last skill write before the skill clock nudges a review; `0` disables |
 | `reviewEnabled` | `true` | master switch for the background loop |
 | `reviewNotifications` | `"on"` | `off` / `on` / `verbose` |
 | `reviewTransport` | `"direct"` | side-channel completion, falls back to a `pi -p` subprocess |
-| `skillReviewMode` | `"stage"` | `stage` / `apply` / `off` for background skill proposals |
+| `skillReviewMode` | `"apply"` | `apply` writes skill changes straight through (Hermes parity); `stage` parks them for `/memory-skills pending`; `off` disables skills |
 | `memoryCharLimit` · `userCharLimit` · `projectCharLimit` | `5000` | per-store caps before consolidation |
 | `correctionDetection` | `true` | save corrections immediately |
 | `failureInjectionEnabled` | `true` | surface relevant past failures |
@@ -234,8 +237,8 @@ Works from a full checkout only; the packaged form omits tests and TypeScript.
 ## Credits
 
 Ported from [chandra447/pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory) (MIT),
-itself a port of the Hermes agent's memory design. This fork adds staged background
-skill proposals and Hermes-aligned review notifications, and keeps upstream
+itself a port of the Hermes agent's memory design. This fork adds Hermes-style
+self-evolving skills and Hermes-aligned review notifications, and keeps upstream
 attribution and the MIT licence.
 
 ## License

@@ -22,6 +22,7 @@ describe("loadConfig", () => {
     assert.strictEqual(config.memoryCharLimit, 5000);
     assert.strictEqual(config.userCharLimit, 5000);
     assert.strictEqual(config.nudgeInterval, 10);
+    assert.strictEqual(config.skillNudgeInterval, 10);
     assert.strictEqual(config.reviewRecentMessages, 0);
     assert.strictEqual(config.reviewEnabled, true);
     assert.strictEqual(config.reviewTransport, "direct");
@@ -160,6 +161,16 @@ describe("loadConfig", () => {
   });
 
 
+  it("clamps skillNudgeInterval and treats 0 as disabled", () => {
+    fs.mkdirSync(path.dirname(TEST_CONFIG_PATH), { recursive: true });
+    fs.writeFileSync(TEST_CONFIG_PATH, JSON.stringify({ skillNudgeInterval: -4 }));
+    assert.strictEqual(loadConfig(TEST_CONFIG_PATH).skillNudgeInterval, 0, "negative values clamp to 0 (disabled)");
+    fs.writeFileSync(TEST_CONFIG_PATH, JSON.stringify({ skillNudgeInterval: 12 }));
+    assert.strictEqual(loadConfig(TEST_CONFIG_PATH).skillNudgeInterval, 12, "a finite value is honored");
+    fs.writeFileSync(TEST_CONFIG_PATH, JSON.stringify({ skillNudgeInterval: "nope" }));
+    assert.strictEqual(loadConfig(TEST_CONFIG_PATH).skillNudgeInterval, 10, "non-numeric keeps the default");
+  });
+
   it("overrides defaults when config file exists", () => {
     // Write a config file
     fs.mkdirSync(path.dirname(TEST_CONFIG_PATH), { recursive: true });
@@ -169,6 +180,7 @@ describe("loadConfig", () => {
       memoryPolicyStyle: "custom",
       memoryPolicyCustomText: "<memory-policy>Custom</memory-policy>",
       nudgeInterval: 15,
+      skillNudgeInterval: 25,
       reviewRecentMessages: 25,
       flushRecentMessages: 40,
       failureInjectionEnabled: false,
@@ -186,6 +198,7 @@ describe("loadConfig", () => {
     assert.strictEqual(config.memoryPolicyCustomText, "<memory-policy>Custom</memory-policy>");
     assert.strictEqual(config.memoryCharLimit, 3000);
     assert.strictEqual(config.nudgeInterval, 15);
+    assert.strictEqual(config.skillNudgeInterval, 25);
     assert.strictEqual(config.reviewRecentMessages, 25);
     assert.strictEqual(config.flushRecentMessages, 40);
     assert.strictEqual(config.failureInjectionEnabled, false);
@@ -605,7 +618,7 @@ describe("loadConfig", () => {
 
   it("defaults the skillReview keys for background skill proposals", () => {
     const config = loadConfig(TEST_CONFIG_PATH);
-    assert.strictEqual(config.skillReviewMode, "stage");
+    assert.strictEqual(config.skillReviewMode, "apply");
     assert.strictEqual(config.skillReviewMaxBodyChars, 12000);
     assert.strictEqual(config.skillReviewMaxProposals, 3);
   });
@@ -614,7 +627,7 @@ describe("loadConfig", () => {
     fs.mkdirSync(path.dirname(TEST_CONFIG_PATH), { recursive: true });
 
     fs.writeFileSync(TEST_CONFIG_PATH, JSON.stringify({ skillReviewMode: "nope" }));
-    assert.strictEqual(loadConfig(TEST_CONFIG_PATH).skillReviewMode, "stage", "an unknown mode falls back to the default");
+    assert.strictEqual(loadConfig(TEST_CONFIG_PATH).skillReviewMode, "apply", "an unknown mode falls back to the default");
 
     fs.writeFileSync(TEST_CONFIG_PATH, JSON.stringify({ skillReviewMode: "apply" }));
     assert.strictEqual(loadConfig(TEST_CONFIG_PATH).skillReviewMode, "apply", "a whitelisted mode is honored");

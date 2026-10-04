@@ -44,7 +44,7 @@ export interface MemoryConfig {
   reviewTransport?: ReviewTransport;
   /** Notification verbosity for background-review success/info notices. Default: on */
   reviewNotifications?: "off" | "on" | "verbose";
-  /** Background skill-proposal review mode. Default: stage */
+  /** Background skill review mode. Default: apply — Hermes parity, skill changes are written straight through and announced */
   skillReviewMode?: SkillReviewMode;
   /** Max chars of a skill body sent into a background review prompt; clamped to 1000..50000. Default: 12000 */
   skillReviewMaxBodyChars?: number;
@@ -101,6 +101,13 @@ export interface MemoryConfig {
   failureInjectionMaxEntries: number;
   /** Tool calls before triggering background review (in addition to turn count). Default: 15 */
   nudgeToolCalls: number;
+  /**
+   * Tool calls since the last skill write before a background review is
+   * triggered for skills alone. Ported from Hermes
+   * `skills.creation_nudge_interval` (default 10 tool iterations); 0 disables
+   * the separate skill clock.
+   */
+  skillNudgeInterval: number;
   /** Maximum time in milliseconds for a consolidation run, auto or manual. Default: 180000 */
   consolidationTimeoutMs: number;
   /**

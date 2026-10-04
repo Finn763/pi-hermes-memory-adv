@@ -561,6 +561,51 @@ describe("setupBackgroundReview", () => {
     assert.strictEqual(execCalls.length, 0, "exec should NOT be called — no user messages");
   });
 
+  // ─── Skill clock tests (Hermes skills.creation_nudge_interval parity) ───
+
+  function makeToolCallBranch(numCalls: number, totalMessages = 6) {
+    const branch = makeBranch(totalMessages);
+    const last = branch[branch.length - 1];
+    last.message.content = [
+      { type: "text", text: "working on it" },
+      ...Array.from({ length: numCalls }, (_, i) => ({ type: "toolCall", id: `tc${i}`, name: "read", arguments: {} })),
+    ] as any;
+    return branch;
+  }
+
+  it("triggers a review from the skill clock alone", async () => {
+    const config = { ...defaultConfig, nudgeInterval: 999, nudgeToolCalls: 999, skillNudgeInterval: 3 } as MemoryConfig;
+    const pi = createMockPi();
+    setup(pi, config);
+
+    fireMessageEnd("user");
+    fireMessageEnd("user");
+    fireMessageEnd("user");
+
+    fireTurnEnd(makeToolCallBranch(2));
+    assert.strictEqual(execCalls.length, 0, "2 tool calls stay below skillNudgeInterval");
+
+    fireTurnEnd(makeToolCallBranch(1));
+    await reviewSettledSignal.promise;
+    assert.strictEqual(execCalls.length, 1, "the 3rd tool call must trigger the review on its own");
+  });
+
+  it("keeps the skill clock off when skillNudgeInterval is 0", async () => {
+    const config = { ...defaultConfig, nudgeInterval: 999, nudgeToolCalls: 999, skillNudgeInterval: 0 } as MemoryConfig;
+    const pi = createMockPi();
+    setup(pi, config);
+
+    fireMessageEnd("user");
+    fireMessageEnd("user");
+    fireMessageEnd("user");
+
+    for (let i = 0; i < 4; i++) {
+      fireTurnEnd(makeToolCallBranch(20));
+    }
+    await settle();
+    assert.strictEqual(execCalls.length, 0, "0 disables the skill clock entirely");
+  });
+
   // ─── Tool-call-aware nudge tests (Epic 4) ───
 
   it("triggers on tool call count threshold even with low turn count", async () => {
@@ -672,7 +717,9 @@ describe("setupBackgroundReview", () => {
   });
 
   it("does not trigger when neither threshold is met", async () => {
-    const config = { ...defaultConfig, nudgeToolCalls: 15 };
+    // skillNudgeInterval 0: this test isolates the two memory thresholds, and
+    // its 10 accumulated tool calls would otherwise trip the skill clock.
+    const config = { ...defaultConfig, nudgeToolCalls: 15, skillNudgeInterval: 0 };
     const pi = createMockPi();
     setup(pi, config);
 

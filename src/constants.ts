@@ -28,6 +28,13 @@ export const DEFAULT_MAX_MESSAGE_CONTENT_LENGTH = 100 * 1024;
 export const DEFAULT_NUDGE_INTERVAL = 10;
 export const DEFAULT_FLUSH_MIN_TURNS = 6;
 export const DEFAULT_NUDGE_TOOL_CALLS = 15;
+/**
+ * Tool calls since the last skill write before the background review is nudged
+ * at skills again. Ported from Hermes `skills.creation_nudge_interval`
+ * (default 10 tool iterations); 0 disables the separate skill clock so only
+ * the memory thresholds can start a review.
+ */
+export const DEFAULT_SKILL_NUDGE_INTERVAL = 10;
 export const DEFAULT_REVIEW_RECENT_MESSAGES = 0;
 export const DEFAULT_FLUSH_RECENT_MESSAGES = 0;
 /**
@@ -317,10 +324,13 @@ function buildSkillReviewGuidance(mode: SkillReviewMode | undefined, options: Sk
   if ((mode ?? "off") === "off") return COMBINED_SKILLS_DENIED;
   const { maxProposals, maxBodyChars, candidates = [] } = options;
   const lines = [
-    "**Skills**: You may also propose procedural skill changes, expressed only as skill_create or skill_patch operations with the fields below — do not call the skill_manage tool from this background review.",
+    "**Skills**: Review the conversation above and consider the skill library. Be ACTIVE — most sessions produce at least one skill update, even if small; a pass that does nothing is a missed learning opportunity, not a neutral outcome.",
+    "Target shape of the library: CLASS-LEVEL skills (how to do a class of task), each with a rich body and an optional references/ directory for session-specific detail — not a long flat list of narrow one-session-one-skill entries. This shapes HOW you update, not WHETHER you update.",
+    "Signals to look for (any one warrants a skill operation): the user corrected your style, format, legibility, verbosity, or workflow — frustration signals like 'stop doing X', 'too verbose', 'just give me the answer', or an explicit 'remember this' count, not just as memory signals; a non-trivial technique, fix, workaround, debugging path, or tool-usage pattern emerged that a future session would benefit from; a skill that was loaded or consulted turned out wrong, missing a step, or outdated.",
+    "Express every change as a skill_create or skill_patch operation with the fields below — do not call the skill_manage tool from this background review.",
     "- skill_create fields: name, description, and content. name is a short descriptive title; description is what the skill does plus the trigger signals a user would type; content is the full markdown body.",
     "- skill_patch fields: skill_id, section, and content. skill_id addresses one existing skill by its exact id, section names the single section to replace, and content is that section's new text.",
-    "- Prefer skill_patch: it updates one named section of an existing skill, addressed by that skill's exact skill_id.",
+    "- Preference order: patch a skill this conversation already touched first; when nothing existing covers the class, create a new class-level skill. Prefer skill_patch — it updates one named section of an existing skill, addressed by that skill's exact skill_id.",
     "- A skill_create is always written to the extension's global skills directory, so it must generalize beyond the current repo. If the lesson only fits this repo, do not create a skill.",
     `- Propose at most ${maxProposals} skill operations, and keep each content field under ${maxBodyChars} characters.`,
     "- Only skills this extension manages can be patched; an unknown skill_id is ignored.",

@@ -9,6 +9,7 @@ import {
   DEFAULT_NUDGE_INTERVAL,
   DEFAULT_FLUSH_MIN_TURNS,
   DEFAULT_NUDGE_TOOL_CALLS,
+  DEFAULT_SKILL_NUDGE_INTERVAL,
   DEFAULT_REVIEW_RECENT_MESSAGES,
   DEFAULT_FLUSH_RECENT_MESSAGES,
   DEFAULT_CONSOLIDATION_CHUNKING,
@@ -69,7 +70,7 @@ const DEFAULT_CONFIG: MemoryConfig = {
   reviewEnabled: true,
   reviewTransport: "direct",
   reviewNotifications: DEFAULT_REVIEW_NOTIFICATIONS,
-  skillReviewMode: "stage",
+  skillReviewMode: "apply",
   skillReviewMaxBodyChars: DEFAULT_SKILL_REVIEW_MAX_BODY_CHARS,
   skillReviewMaxProposals: DEFAULT_SKILL_REVIEW_MAX_PROPOSALS,
   flushOnCompact: true,
@@ -91,6 +92,7 @@ const DEFAULT_CONFIG: MemoryConfig = {
   consolidationUsageSignals: true,
   autoConsolidationWarnOnFailure: true,
   nudgeToolCalls: DEFAULT_NUDGE_TOOL_CALLS,
+  skillNudgeInterval: DEFAULT_SKILL_NUDGE_INTERVAL,
   standingInstructionsEnabled: true,
   projectsMemoryDir: DEFAULT_PROJECTS_MEMORY_DIR,
   sessionSearch: { variant: "legacy" },
@@ -208,6 +210,11 @@ export function loadConfig(configPath = DEFAULT_CONFIG_PATH): MemoryConfig {
       if (typeof parsed.failureInjectionMaxAgeDays === "number") config.failureInjectionMaxAgeDays = parsed.failureInjectionMaxAgeDays;
       if (typeof parsed.failureInjectionMaxEntries === "number") config.failureInjectionMaxEntries = parsed.failureInjectionMaxEntries;
       if (typeof parsed.nudgeToolCalls === "number") config.nudgeToolCalls = parsed.nudgeToolCalls;
+      // Hermes parity (`skills.creation_nudge_interval`): the separate skill
+      // clock. 0 disables it; invalid values keep the default.
+      if (typeof parsed.skillNudgeInterval === "number" && Number.isFinite(parsed.skillNudgeInterval)) {
+        config.skillNudgeInterval = Math.max(0, Math.floor(parsed.skillNudgeInterval));
+      }
       // Accept any finite number >= 0 so a user can both opt in (positive value)
       // and explicitly disable retention with 0. Invalid/negative values are
       // ignored, keeping the current (default) semantics.

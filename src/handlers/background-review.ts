@@ -16,6 +16,7 @@ import {
   DEFAULT_SKILL_REVIEW_MAX_BODY_CHARS,
   DEFAULT_SKILL_REVIEW_MAX_PROPOSALS,
   DEFAULT_REVIEW_NOTIFICATIONS,
+  DEFAULT_SKILL_NUDGE_INTERVAL,
   MEMORY_UPDATED_NOTIFICATION,
   SKILL_CANDIDATE_MAX_CHARS,
   skillAppliedNotification,
@@ -372,6 +373,7 @@ export function setupBackgroundReview(
 
   let turnsSinceReview = 0;
   let toolCallsSinceReview = 0;
+  let toolCallsSinceSkill = 0;
   let userTurnCount = 0;
   let activeReview: Promise<void> | undefined;
   const sessionAbort = new AbortController();
@@ -395,6 +397,13 @@ export function setupBackgroundReview(
       userTurnCount++;
     }
   });
+
+  /** Hermes parity (`skills.creation_nudge_interval`): a review that actually
+   * produced skill operations restarts the skill clock, mirroring Hermes's
+   * reset of `_iters_since_skill` when skill_manage runs. */
+  const skillOpsProduced = (result: DirectReviewResult): boolean =>
+    (result.stagedCount ?? 0) > 0
+    || (result.appliedSummaries ?? []).some((summary) => isSkillAppliedSummary(summary));
 
   const notificationMode = (): "off" | "on" | "verbose" =>
     config.reviewNotifications ?? DEFAULT_REVIEW_NOTIFICATIONS;
@@ -505,6 +514,7 @@ export function setupBackgroundReview(
         if (sessionCancelled()) return;
 
         if (directResult.ok) {
+          if (skillOpsProduced(directResult)) toolCallsSinceSkill = 0;
           notifyDirectOutcome(ctx, directResult);
           return;
         }
@@ -587,6 +597,7 @@ export function setupBackgroundReview(
           for (const block of content) {
             if (block && typeof block === "object" && block.type === "toolCall") {
               toolCallsSinceReview++;
+              toolCallsSinceSkill++;
             }
           }
         }
@@ -597,13 +608,18 @@ export function setupBackgroundReview(
 
     const turnThresholdMet = turnsSinceReview >= config.nudgeInterval;
     const toolCallThresholdMet = toolCallsSinceReview >= config.nudgeToolCalls;
+    // Hermes parity (`skills.creation_nudge_interval`): the skill clock runs on
+    // its own and can start a review the memory thresholds would not.
+    const skillNudgeInterval = config.skillNudgeInterval ?? DEFAULT_SKILL_NUDGE_INTERVAL;
+    const skillThresholdMet = skillNudgeInterval > 0 && toolCallsSinceSkill >= skillNudgeInterval;
 
-    if (!turnThresholdMet && !toolCallThresholdMet) return;
+    if (!turnThresholdMet && !toolCallThresholdMet && !skillThresholdMet) return;
     if (userTurnCount < 3) return;
     if (sessionCancelled()) return;
 
     turnsSinceReview = 0;
     toolCallsSinceReview = 0;
+    if (skillThresholdMet) toolCallsSinceSkill = 0;
 
     startReview(ctx);
   });

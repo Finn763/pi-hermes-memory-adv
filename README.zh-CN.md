@@ -22,7 +22,7 @@ Pi Agent 每次开新会话都是失忆状态——你的技术栈、你的约�
 
 这是 [chandra447/pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory)（MIT）
 的 **adv** 分支，源自 Hermes agent 的记忆设计。在上游引擎之上，它加了
-**后台技能提案（暂存待批）** 和 **与 Hermes 对齐的 review 通知语义**。
+**自进化技能**（Hermes 式：直接写入并弹 `💾 Skill …` 通知）和 **与 Hermes 对齐的 review 通知语义**。
 
 ```bash
 pi install git:github.com/Finn763/pi-hermes-memory-adv
@@ -61,14 +61,17 @@ pi install git:github.com/Finn763/pi-hermes-memory-adv
 1. **会话开始** — 注入一份小记忆策略（固定指令 + 指针），存储本体按需调用。
 2. **工作中** — Agent 用 `memory_add` / `memory_replace` / `memory_remove` 写入；
    纠正被即时识别并保存。
-3. **每 10 轮**（或累计 15 次工具调用，且你说满 3 句之后）— 后台 review 通过
-   side-channel 补全读取最近消息，保存值得留的内容：`💾 Memory updated`。
-4. **技能** — 过程性知识用 `skill_manage` 保存；review 产生的新提案默认
-   **暂存待批**（`/memory-skills pending`），不会静默写入。
+3. **每 10 轮**（或累计 15 次工具调用，或距上次技能写入 10 次工具调用；且你说满
+   3 句之后）— 后台 review 通过 side-channel 补全读取最近消息，保存值得留的
+   内容：`💾 Memory updated`。
+4. **技能** — 同一次 review 可以把类级技能直接写进全局技能库，并逐个提示：
+   `💾 Skill '<name>' created`；改成 `skillReviewMode: "stage"` 则改为暂存，
+   用 `/memory-skills pending` 批准。
 5. **存储写满时** — 自动合并（consolidation），而不是报错或丢数据。
 6. **随时** — `session_search` 基于 SQLite FTS5 检索全部历史会话。
 
-> 节奏对齐 Hermes 原版设计：`nudge_interval = 10` 个用户轮次，硬门槛 3 句，
+> 节奏对齐 Hermes 原版设计：`nudge_interval = 10` 个用户轮次、
+> `skills.creation_nudge_interval = 10` 次工具调用（技能时钟），硬门槛 3 句，
 > 同时只跑一个 review。**没有弹通知 = 没有值得存的东西**，不是坏了。
 
 ---
@@ -79,9 +82,9 @@ pi install git:github.com/Finn763/pi-hermes-memory-adv
 |---|---|
 | 存储 | `MEMORY.md`（事实/环境）、`USER.md`（你是谁）、项目记忆（每个仓库的约定）、`failures.md`（什么没成、为什么） |
 | 注入 | 默认 policy-only——可检索，不全量注入；全量注入是可选项 |
-| Review 节奏 | 每 10 轮 / 15 次工具调用，硬门槛 ≥3 句用户消息，同时仅一个 review |
+| Review 节奏 | 每 10 轮 / 15 次工具调用，另有独立的 10 次工具调用技能时钟；硬门槛 ≥3 句用户消息，同时仅一个 review |
 | 通知 | `off` / `on` / `verbose`，默认 `on`——与 Hermes `display.memory_notifications` 同语义 |
-| 技能 | Pi 原生 `SKILL.md`，由 Agent 写入；默认暂存待你批准 |
+| 技能 | Pi 原生 `SKILL.md`，由 Agent 写入；默认直接落盘并用 `💾 Skill …` 提示，`stage` 改为待批 |
 | 密钥 | 所有写入先过扫描器；API key、token、SSH key 拒绝落盘 |
 | 容量 | 默认每个存储 5,000 字符；满了自动合并 |
 
@@ -151,7 +154,7 @@ pi install git:github.com/Finn763/pi-hermes-memory-adv
 │   ├── failures.md                 # 什么没成、为什么
 │   ├── sessions.db                 # SQLite：记忆镜像 + 会话全文检索
 │   ├── skills/                     # 自管理技能（SKILL.md）
-│   └── pending/                    # 暂存待批的技能提案
+│   └── pending/                    # 暂存待批的技能提案（`stage` 模式）
 └── projects-memory/<project>/      # 项目级记忆 + 技能
 ```
 
@@ -164,10 +167,11 @@ pi install git:github.com/Finn763/pi-hermes-memory-adv
 | `lazyInitialization` | `false` | `true` + `policy-only` = 首次使用时才初始化 |
 | `nudgeInterval` | `10` | 后台 review 的间隔（用户轮次） |
 | `nudgeToolCalls` | `15` | 或累计这么多次工具调用后触发 |
+| `skillNudgeInterval` | `10` | 距上次技能写入累计这么多次工具调用后触发技能时钟；`0` 关闭 |
 | `reviewEnabled` | `true` | 后台 review 总开关 |
 | `reviewNotifications` | `"on"` | `off` / `on` / `verbose` |
 | `reviewTransport` | `"direct"` | side-channel 补全，失败回落到 `pi -p` 子进程 |
-| `skillReviewMode` | `"stage"` | 后台技能提案：`stage` / `apply` / `off` |
+| `skillReviewMode` | `"apply"` | `apply` 直接写入技能改动（对齐 Hermes）；`stage` 暂存待批（`/memory-skills pending`）；`off` 关闭 |
 | `memoryCharLimit` · `userCharLimit` · `projectCharLimit` | `5000` | 各存储的容量上限（满则合并） |
 | `correctionDetection` | `true` | 纠正即时保存 |
 | `failureInjectionEnabled` | `true` | 相关历史失败自动浮现 |
@@ -221,7 +225,7 @@ npm test          # 完整测试套件
 ## 致谢
 
 源自 [chandra447/pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory)（MIT），
-其本身是 Hermes agent 记忆设计的移植。本分支新增暂存式后台技能提案与
+其本身是 Hermes agent 记忆设计的移植。本分支新增 Hermes 式自进化技能与
 Hermes 对齐的 review 通知语义，并保留上游署名与 MIT 许可证。
 
 ## 许可证

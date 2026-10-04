@@ -164,7 +164,7 @@ describe("review prompt skill gating", () => {
         skillReviewMaxBodyChars: 4321,
       }));
 
-      assert.match(direct, /You may also propose procedural skill changes/);
+      assert.match(direct, /Express every change as a skill_create or skill_patch operation/);
       assert.match(direct, /skill_create fields: name, description, and content/);
       assert.match(direct, /skill_patch fields: skill_id, section, and content/);
       assert.match(direct, /skill_patch/);
@@ -172,6 +172,8 @@ describe("review prompt skill gating", () => {
       assert.ok(direct.includes("under 4321 characters"), "states the body limit");
       assert.match(direct, /global skills directory/);
       assert.match(direct, /generalize beyond the current repo/);
+      assert.match(direct, /Be ACTIVE/);
+      assert.match(direct, /most sessions produce at least one skill update/);
       assert.doesNotMatch(direct, /Do NOT create or modify skills/);
     }
   });
