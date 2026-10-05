@@ -21,10 +21,10 @@ durable memory layer: global facts, your profile, per-project conventions and pa
 failures, stored as Markdown, mirrored into SQLite, and injected as a small
 token-aware policy instead of a dump.
 
-This is the **adv** fork of [chandra447/pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory)
-(MIT), itself a port of the Hermes agent's memory design. On top of the upstream
-engine it adds **self-evolving skills** (Hermes parity: written straight through
-with a `💾 Skill …` notice) and **Hermes-aligned review notifications**.
+This is the **adv** build of the [chandra447/pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory)
+engine (MIT — see Credits for attribution). On top of that engine it adds
+**self-evolving skills** (Hermes parity: written straight through with a
+`💾 Skill …` notice) and **Hermes-aligned review notifications**.
 
 ```bash
 pi install git:github.com/Finn763/pi-hermes-memory-adv

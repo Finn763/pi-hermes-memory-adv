@@ -20,8 +20,8 @@ Pi Agent 每次开新会话都是失忆状态——你的技术栈、你的约�
 失败教训——以 Markdown 落盘、镜像进 SQLite、并以一份轻量的 token 感知策略注入，
 而不是全量倾倒。
 
-这是 [chandra447/pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory)（MIT）
-的 **adv** 分支，源自 Hermes agent 的记忆设计。在上游引擎之上，它加了
+这是 [chandra447/pi-hermes-memory](https://github.com/chandra447/pi-hermes-memory) 引擎的 **adv** 维护版
+（MIT，原作者署名见 Credits）。在引擎之上它加了
 **自进化技能**（Hermes 式：直接写入并弹 `💾 Skill …` 通知）和 **与 Hermes 对齐的 review 通知语义**。
 
 ```bash
